@@ -71,8 +71,34 @@ def lastWin(df):
     df = df.join(series_v)
     return df
 
+
+
+def last_5_games(df):
+    passgames = {}
+    h_last5 = []
+    v_last5 = []
+    for index, row in df.iterrows():
+        if row[home] not in passgames:
+            passgames[row[home]] = []
+        if row[visitor] not in passgames:
+            passgames[row[visitor]] = []
+        h_last5.append(cal_mean(passgames[row[home]]))
+        v_last5.append(cal_mean(passgames[row[visitor]]))
+        passgames[row[home]].append(row[homewin])
+        passgames[row[visitor]].append(1-row[homewin])
+        if len(passgames[row[home]]) > 5:
+            passgames[row[home]].pop(0)
+        if len(passgames[row[visitor]]) > 5:
+            passgames[row[visitor]].pop(0)
+
+    hseries = pd.Series(h_last5, name='h_last5')
+    vseries = pd.Series(v_last5, name='v_last5')
+    df = df.join(hseries)
+    return df.join(vseries)
+
 def lastDays(df):
     # 球队距离上次比赛的间隔天数
+    # 加入该特征后准确性下降，原因待查~
     lastdate = {}
     hlastdays = []
     vlastdays = []
@@ -95,25 +121,19 @@ def lastDays(df):
     df = min_max_normalize(df, series_v.name)
     return df
 
-def last_5_games(df, col):
-    # 球队最近5场比赛的胜率
-    passgames = {}
-    last5 = []
-    for index, row in df.iterrows():
-        if row[home] not in passgames:
-            passgames[row[home]] = []
-        if row[visitor] not in passgames:
-            passgames[row[visitor]] = []
-        last5.append(cal_mean(passgames[row[col]]))
-        passgames[row[home]].append(row[homewin])
-        passgames[row[visitor]].append(1-row[homewin])
-        if len(passgames[row[home]]) > 5:
-            passgames[row[home]].pop(0)
-        if len(passgames[row[visitor]]) > 5:
-            passgames[row[visitor]].pop(0)
+def h_team_rankhiger(df):
+    standing = pd.read_table('new.txt', sep=',', skiprows=[0])
+    teamrank = {}
+    for i, row in standing.iterrows():
+        if row['Team'] == 'New Orleans Hornets':
+            row['Team'] = 'New Orleans Pelicans'
+        teamrank[row['Team']] = row['Rk']
+    series = pd.Series(list(map(lambda x, y : 1 if teamrank[x] < teamrank[y] else 0, data['Home'], data['Visitor'])))
+    series.name = 'HrankHigher'
+    return data.join(series)
 
-    series = pd.Series(last5, name=col+'last5')
-    return df.join(series)
+def h_team_wonlast(df):
+    pass
 
 
 def decisionTree(df):
@@ -122,3 +142,11 @@ def decisionTree(df):
     X_prewins = df[['Hlastwin', 'Vlastwin']].values
     y_true = df['Homewin'].values
     cross_val_score(dtc, X_prewins, y_true, scoring='accuracy')
+
+if __name__ == '__main__':
+    features_meth = [lastWin, last_5_games, lastDays]
+    df = pd.read_csv('data.csv', parse_dates=['Date'])
+    df = dataset_cleaning(df)
+    df = homeWin(df)
+    for func in features_meth:
+        df = func(df)
