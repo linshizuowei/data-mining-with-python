@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.cross_validation import cross_val_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.grid_search import GridSearchCV
 
 date ='Date'
 start = 'Start'
@@ -31,6 +33,12 @@ def cal_mean(res):
     for i in res:
         win += i
     return win * 1.0 / len(res) if len(res) > 0 else 0
+
+def get_key(s1, s2):
+    if s1 < s2:
+        return s1 + s2
+    else:
+        return s2 + s1
 
 def dataset_cleaning(df):
     # 数据集的列名有重复，而且不够简洁， 重新命名
@@ -122,18 +130,31 @@ def lastDays(df):
     return df
 
 def h_team_rankhiger(df):
+    # 主队是否上赛季排名更高
     standing = pd.read_table('new.txt', sep=',', skiprows=[0])
     teamrank = {}
     for i, row in standing.iterrows():
         if row['Team'] == 'New Orleans Hornets':
             row['Team'] = 'New Orleans Pelicans'
         teamrank[row['Team']] = row['Rk']
-    series = pd.Series(list(map(lambda x, y : 1 if teamrank[x] < teamrank[y] else 0, data['Home'], data['Visitor'])))
+    series = pd.Series(list(map(lambda x, y : 1 if teamrank[x] < teamrank[y] else 0, df['Home'], df['Visitor'])))
     series.name = 'HrankHigher'
-    return data.join(series)
+    return df.join(series)
 
 def h_team_wonlast(df):
-    pass
+    # 主队是否在上次双方对阵时获胜
+    teamres = {}
+    lastwin = []
+    for index, row in df.iterrows():
+        key = get_key(row[home], row[visitor])
+        if key not in teamres:
+            teamres[key] = ''
+            lastwin.append(-1)
+        else:
+            lastwin.append(1 if row[home] == teamres[key] else 0)
+        teamres[key] = row[home] if row[hpts] > row[vpts] else row[visitor]
+    series = pd.Series(lastwin, name='h_wonlast')
+    return df.join(series)
 
 
 def decisionTree(df):
