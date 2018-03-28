@@ -156,6 +156,10 @@ def h_team_wonlast(df):
     series = pd.Series(lastwin, name='h_wonlast')
     return df.join(series)
 
+def feature_extract(df, meths):
+    for func in features_meth:
+        df = func(df)
+    df.to_csv('features.csv')
 
 def decisionTree(df):
     # 模型训练及预测
@@ -165,9 +169,8 @@ def decisionTree(df):
     cross_val_score(dtc, X_prewins, y_true, scoring='accuracy')
 
 if __name__ == '__main__':
-    features_meth = [lastWin, last_5_games, lastDays]
+    features_meth = [lastWin, last_5_games, lastDays, h_team_rankhiger, h_team_wonlast]
     df = pd.read_csv('data.csv', parse_dates=['Date'])
     df = dataset_cleaning(df)
     df = homeWin(df)
-    for func in features_meth:
-        df = func(df)
+    feature_extract(df, features_meth)
