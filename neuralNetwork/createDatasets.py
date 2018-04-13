@@ -7,6 +7,8 @@ from matplotlib import pyplot as plt
 from skimage.measure import label, regionprops
 from sklearn.utils import check_random_state
 from sklearn.preprocessing import OneHotEncoder
+from skimage.transform import resize
+from sklearn.cross_validation import train_test_split
 
 # %matplotlib inline
 
@@ -63,3 +65,10 @@ def generate_datasets():
     onehot = OneHotEncoder()
     y = onehot.fit_transform(targets.reshape(targets.shape[0], 1))
     y = y.todense()
+    return datasets, y
+
+def adjust_datasets(datasets, label):
+    datasets = np.array([resize(segment_image(sample)[0], (20, 20)) for sample in datasets])
+    X = datasets.reshape((datasets.shape[0], datasets.shape[1] * datasets.shape[2]))
+    x_train, x_test, y_train, y_test = train_test_split(X, label, train_size=0.9)
+    return x_train, x_test, y_train, y_test
